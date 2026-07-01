@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" width="1000" height="1250" role="img" aria-label="Placeholder portrait silhouette of the artist in the studio">
+  <rect width="1000" height="1250" fill="#eeeae4" />
+  
+      <ellipse cx="500" cy="475" rx="180" ry="275" fill="#a68a6d" opacity="0.9" />
+      <path d="M220,1250 Q500,687.5 780,1250 Z" fill="#4a3c2e" opacity="0.85" />
+      <ellipse cx="680" cy="375" rx="250" ry="375" fill="#cbb69a" opacity="0.2" />
+    
+</svg>
