@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --color-paper: #faf7f2;
+  --color-paper-dim: #f1ece3;
+  --color-ink: #1b1815;
+  --color-ink-soft: #4a453e;
+  --color-line: #e2dbcd;
+  --color-clay: #a8532f;
+  --color-clay-dark: #7c3a1e;
+  --color-sage: #6b7660;
+  --color-sold: #8c837a;
+}
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-paper-dim: var(--color-paper-dim);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-line: var(--color-line);
+  --color-clay: var(--color-clay);
+  --color-clay-dark: var(--color-clay-dark);
+  --color-sage: var(--color-sage);
+  --color-sold: var(--color-sold);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+
+::selection {
+  background: var(--color-clay);
+  color: var(--color-paper);
+}
+
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 2px;
+}
