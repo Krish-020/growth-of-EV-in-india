@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
-import { getAllArtworks } from "@/lib/mockData";
+import { getAllArtworks } from "@/lib/db/artworks";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = ["", "/catalog", "/about", "/commission", "/cart"].map(
     (path) => ({
       url: `${siteUrl}${path}`,
@@ -11,7 +11,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })
   );
 
-  const artworkRoutes = getAllArtworks().map((artwork) => ({
+  const artworks = await getAllArtworks();
+  const artworkRoutes = artworks.map((artwork) => ({
     url: `${siteUrl}/art/${artwork.slug}`,
     lastModified: artwork.createdAt,
   }));

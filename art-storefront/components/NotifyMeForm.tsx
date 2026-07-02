@@ -2,16 +2,26 @@
 
 import { useState, type FormEvent } from "react";
 
-export default function NotifyMeForm({ title }: { title: string }) {
+export default function NotifyMeForm({ title, slug }: { title: string; slug: string }) {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!email.trim()) return;
-    // Mock waitlist submission — Phase 2 stores this against the piece/drop
-    // in Postgres and triggers a transactional email when similar work drops.
-    setSubmitted(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, artworkSlug: slug }),
+      });
+      if (!res.ok) throw new Error();
+      setSubmitted(true);
+    } catch {
+      setError("Couldn't save that — please try again.");
+    }
   }
 
   if (submitted) {
@@ -24,25 +34,28 @@ export default function NotifyMeForm({ title }: { title: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row">
-      <label htmlFor="notify-email" className="sr-only">
-        Email address
-      </label>
-      <input
-        id="notify-email"
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@example.com"
-        className="focus-ring w-full rounded-full border border-line bg-paper px-4 py-2.5 text-sm outline-none"
-      />
-      <button
-        type="submit"
-        className="focus-ring shrink-0 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-clay-dark"
-      >
-        Notify me
-      </button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <label htmlFor="notify-email" className="sr-only">
+          Email address
+        </label>
+        <input
+          id="notify-email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="focus-ring w-full rounded-full border border-line bg-paper px-4 py-2.5 text-sm outline-none"
+        />
+        <button
+          type="submit"
+          className="focus-ring shrink-0 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-clay-dark"
+        >
+          Notify me
+        </button>
+      </div>
+      {error && <p className="text-xs text-clay">{error}</p>}
     </form>
   );
 }

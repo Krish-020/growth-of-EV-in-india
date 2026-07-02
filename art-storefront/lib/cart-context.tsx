@@ -8,7 +8,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { CartLine } from "@/lib/types";
-import { getArtworkBySlug, isPurchasable } from "@/lib/mockData";
+import { isPurchasable } from "@/lib/artwork-rules";
+import { useCatalog } from "@/lib/catalog-context";
 
 const STORAGE_KEY = "art-storefront-cart-v1";
 
@@ -84,42 +85,49 @@ const CartContext = createContext<CartContextValue | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const lines = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const isHydrated = useHasMounted();
+  const { getArtworkBySlug } = useCatalog();
 
-  const addItem = useCallback((slug: string, quantity = 1) => {
-    const artwork = getArtworkBySlug(slug);
-    if (!artwork || !isPurchasable(artwork)) return;
-    const maxQuantity = artwork.edition ? artwork.edition.availableCount : 1;
+  const addItem = useCallback(
+    (slug: string, quantity = 1) => {
+      const artwork = getArtworkBySlug(slug);
+      if (!artwork || !isPurchasable(artwork)) return;
+      const maxQuantity = artwork.edition ? artwork.edition.availableCount : 1;
 
-    const existing = cartLines.find((line) => line.slug === slug);
-    if (existing) {
-      // Originals are one-of-one: re-adding just keeps it at qty 1.
-      if (!artwork.edition) return;
-      const nextQty = Math.min(existing.quantity + quantity, maxQuantity);
-      setLines(
-        cartLines.map((line) =>
-          line.slug === slug ? { ...line, quantity: nextQty } : line
-        )
-      );
-      return;
-    }
-    setLines([...cartLines, { slug, quantity: Math.min(quantity, maxQuantity) }]);
-  }, []);
+      const existing = cartLines.find((line) => line.slug === slug);
+      if (existing) {
+        // Originals are one-of-one: re-adding just keeps it at qty 1.
+        if (!artwork.edition) return;
+        const nextQty = Math.min(existing.quantity + quantity, maxQuantity);
+        setLines(
+          cartLines.map((line) =>
+            line.slug === slug ? { ...line, quantity: nextQty } : line
+          )
+        );
+        return;
+      }
+      setLines([...cartLines, { slug, quantity: Math.min(quantity, maxQuantity) }]);
+    },
+    [getArtworkBySlug]
+  );
 
   const removeItem = useCallback((slug: string) => {
     setLines(cartLines.filter((line) => line.slug !== slug));
   }, []);
 
-  const setQuantity = useCallback((slug: string, quantity: number) => {
-    const artwork = getArtworkBySlug(slug);
-    const maxQuantity = artwork?.edition ? artwork.edition.availableCount : 1;
-    setLines(
-      cartLines.map((line) =>
-        line.slug === slug
-          ? { ...line, quantity: Math.max(1, Math.min(quantity, maxQuantity)) }
-          : line
-      )
-    );
-  }, []);
+  const setQuantity = useCallback(
+    (slug: string, quantity: number) => {
+      const artwork = getArtworkBySlug(slug);
+      const maxQuantity = artwork?.edition ? artwork.edition.availableCount : 1;
+      setLines(
+        cartLines.map((line) =>
+          line.slug === slug
+            ? { ...line, quantity: Math.max(1, Math.min(quantity, maxQuantity)) }
+            : line
+        )
+      );
+    },
+    [getArtworkBySlug]
+  );
 
   const clearCart = useCallback(() => setLines([]), []);
 
@@ -134,7 +142,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const artwork = getArtworkBySlug(line.slug);
         return artwork ? sum + artwork.price * line.quantity : sum;
       }, 0),
-    [lines]
+    [lines, getArtworkBySlug]
   );
 
   const value: CartContextValue = {

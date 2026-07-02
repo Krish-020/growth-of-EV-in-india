@@ -5,16 +5,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { useCart } from "@/lib/cart-context";
-import { getArtworkBySlug } from "@/lib/mockData";
+import { useCatalog } from "@/lib/catalog-context";
 import { getShippingForArtwork, type ShippingZone } from "@/lib/shipping";
 import { formatPrice } from "@/lib/format";
-import {
-  generateOrderId,
-  saveMockOrder,
-  type ShippingAddress,
-} from "@/lib/mock-order";
+import { GST_RATE } from "@/lib/pricing";
 
-const GST_RATE = 0.12; // Prototype estimate — confirm the applicable HSN/GST rate for originals vs. prints before launch.
+interface ShippingAddress {
+  fullName: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  gstin?: string;
+}
 
 type Step = "shipping" | "payment";
 
@@ -27,9 +33,10 @@ const PAYMENT_METHODS = [
 export default function CheckoutPage() {
   const router = useRouter();
   const { lines, subtotal, clearCart, isHydrated } = useCart();
+  const { getArtworkBySlug, isLoaded } = useCatalog();
   const [step, setStep] = useState<Step>("shipping");
   const [country, setCountry] = useState("India");
-  const [address, setAddress] = useState<Omit<ShippingAddress, "country">>({
+  const [address, setAddress] = useState<ShippingAddress>({
     fullName: "",
     email: "",
     phone: "",
@@ -42,6 +49,7 @@ export default function CheckoutPage() {
   });
   const [paymentMethod, setPaymentMethod] = useState("upi");
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const zone: ShippingZone = country === "India" ? "domestic" : "international";
 
@@ -50,7 +58,7 @@ export default function CheckoutPage() {
       lines
         .map((line) => ({ line, artwork: getArtworkBySlug(line.slug) }))
         .filter((x) => x.artwork),
-    [lines]
+    [lines, getArtworkBySlug]
   );
 
   const shippingTotal = useMemo(
@@ -65,7 +73,7 @@ export default function CheckoutPage() {
   const gst = Math.round(subtotal * GST_RATE);
   const total = subtotal + shippingTotal + gst;
 
-  if (isHydrated && lines.length === 0 && !processing) {
+  if (isHydrated && isLoaded && lines.length === 0 && !processing) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-20 text-center sm:px-8">
         <h1 className="font-display text-3xl">Nothing to check out</h1>
@@ -86,36 +94,37 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function handlePay(e: FormEvent<HTMLFormElement>) {
+  async function handlePay(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setProcessing(true);
+    setError(null);
 
-    // Mock payment: Phase 2 replaces this with a real Razorpay/Stripe
-    // checkout session and a server-verified webhook before the order
-    // is marked paid.
-    setTimeout(() => {
-      const order = {
-        id: generateOrderId(),
-        createdAt: new Date().toISOString(),
-        lines: cartArtworks.map(({ line, artwork }) => ({
-          slug: artwork!.slug,
-          title: artwork!.title,
-          medium: artwork!.medium,
-          image: artwork!.images[0].src,
-          price: artwork!.price,
-          quantity: line.quantity,
-        })),
-        address: { ...address, country },
-        paymentMethod,
-        subtotal,
-        shipping: shippingTotal,
-        gst,
-        total,
-      };
-      saveMockOrder(order);
+    // No payment gateway is called here on purpose (see README) — this
+    // creates a real order and decrements real inventory in the database,
+    // it just never charges a card/UPI. Phase 2+ would verify a Razorpay/
+    // Stripe payment server-side before this request is allowed to succeed.
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: { ...address, country },
+          paymentMethod,
+          lines: lines.map((l) => ({ slug: l.slug, quantity: l.quantity })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong placing your order.");
+        setProcessing(false);
+        return;
+      }
       clearCart();
-      router.push("/checkout/confirmation");
-    }, 1200);
+      router.push(`/checkout/confirmation?order=${data.id}`);
+    } catch {
+      setError("Couldn't reach the server. Please try again.");
+      setProcessing(false);
+    }
   }
 
   return (
@@ -272,10 +281,17 @@ export default function CheckoutPage() {
             </fieldset>
 
             <p className="rounded-md border border-line bg-paper-dim px-4 py-3 text-xs text-ink-soft">
-              This is a demo checkout — no real payment gateway is connected
-              yet. Phase 2 wires this step to Razorpay (UPI/cards/netbanking
-              for India) or Stripe.
+              No real payment gateway is connected — placing this order
+              won&apos;t charge a card or UPI, but it does create a real order
+              and update real inventory. Wiring Razorpay (UPI/cards/netbanking
+              for India) here is the one piece left for a fully live store.
             </p>
+
+            {error && (
+              <p className="rounded-md border border-clay/40 bg-clay/10 px-4 py-3 text-sm text-clay-dark">
+                {error}
+              </p>
+            )}
 
             <div className="flex gap-3">
               <button

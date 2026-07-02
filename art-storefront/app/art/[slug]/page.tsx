@@ -2,21 +2,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
-  getAllArtworks,
   getArtworkBySlug,
   getOriginalFor,
   getPrintsOf,
   getRelatedArtworks,
-} from "@/lib/mockData";
+} from "@/lib/db/artworks";
 import { formatDimensions, formatPrice, formatWeight } from "@/lib/format";
 import ProductGallery from "@/components/ProductGallery";
 import BuyBox from "@/components/BuyBox";
 import StatusBadge from "@/components/StatusBadge";
 import ArtCard from "@/components/ArtCard";
 
-export function generateStaticParams() {
-  return getAllArtworks().map((artwork) => ({ slug: artwork.slug }));
-}
+// No generateStaticParams: pieces are added/edited/sold live via the admin
+// dashboard, so this route renders dynamically per-request against the
+// database rather than being frozen at build time.
 
 export async function generateMetadata({
   params,
@@ -24,7 +23,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const artwork = getArtworkBySlug(slug);
+  const artwork = await getArtworkBySlug(slug);
   if (!artwork) return {};
 
   const description = `${artwork.medium}, ${artwork.year}. ${artwork.story.slice(0, 140)}...`;
@@ -59,12 +58,14 @@ export default async function ArtworkPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const artwork = getArtworkBySlug(slug);
+  const artwork = await getArtworkBySlug(slug);
   if (!artwork) notFound();
 
-  const originalPiece = getOriginalFor(artwork);
-  const prints = getPrintsOf(artwork.slug);
-  const related = getRelatedArtworks(artwork, 4);
+  const [originalPiece, prints, related] = await Promise.all([
+    getOriginalFor(artwork),
+    getPrintsOf(artwork.slug),
+    getRelatedArtworks(artwork, 4),
+  ]);
 
   const jsonLd = {
     "@context": "https://schema.org",

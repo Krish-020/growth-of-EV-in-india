@@ -1,12 +1,15 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useMockOrder } from "@/lib/mock-order";
+import { getOrderById } from "@/lib/db/orders";
 import { formatPrice } from "@/lib/format";
 
-export default function ConfirmationPage() {
-  const order = useMockOrder();
+export default async function ConfirmationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ order?: string }>;
+}) {
+  const { order: orderId } = await searchParams;
+  const order = orderId ? await getOrderById(orderId) : undefined;
 
   if (!order) {
     return (
@@ -14,7 +17,7 @@ export default function ConfirmationPage() {
         <h1 className="font-display text-3xl">No recent order found</h1>
         <p className="mt-3 text-ink-soft">
           If you just completed checkout, this page may have been opened in a
-          new tab.
+          new tab or the order link is missing.
         </p>
         <Link
           href="/catalog"
@@ -33,15 +36,15 @@ export default function ConfirmationPage() {
         Thank you, {order.address.fullName.split(" ")[0] || "collector"}.
       </h1>
       <p className="mt-3 text-ink-soft">
-        {`Order ${order.id} is confirmed. A GST-compliant invoice and receipt have been emailed to ${order.address.email}.`}
+        {`Order ${order.orderNumber} is confirmed. A receipt has been emailed to ${order.address.email}.`}
       </p>
       <p className="mt-2 text-xs text-ink-soft">
-        (Demo checkout — no email was actually sent and no payment was taken.)
+        (No real payment gateway is connected — no charge was actually taken.)
       </p>
 
       <ul className="mt-8 divide-y divide-line border-y border-line">
         {order.lines.map((line) => (
-          <li key={line.slug} className="flex gap-4 py-4">
+          <li key={line.id} className="flex gap-4 py-4">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-paper-dim">
               <Image
                 src={line.image}

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import ArtCard from "@/components/ArtCard";
 import FilterBar from "@/components/FilterBar";
-import { filterArtworks, getFilterOptions } from "@/lib/mockData";
+import { filterArtworks, getFilterOptions } from "@/lib/db/artworks";
 import type { ArtCategory, AvailabilityStatus, SizeBucket } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -45,7 +45,7 @@ export default async function CatalogPage({
 
   const { minPrice, maxPrice } = parsePriceRange(price);
 
-  const results = filterArtworks({
+  const results = await filterArtworks({
     category: VALID_CATEGORIES.includes(category as ArtCategory)
       ? (category as ArtCategory)
       : undefined,
@@ -60,7 +60,7 @@ export default async function CatalogPage({
     maxPrice,
   });
 
-  const { mediums } = getFilterOptions();
+  const { mediums } = await getFilterOptions();
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">

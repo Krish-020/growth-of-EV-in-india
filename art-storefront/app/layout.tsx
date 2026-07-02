@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import SiteChrome from "@/components/SiteChrome";
 import { CartProvider } from "@/lib/cart-context";
+import { CatalogProvider } from "@/lib/catalog-context";
 import { siteConfig } from "@/lib/site-config";
 
 const fraunces = Fraunces({
@@ -53,11 +53,11 @@ export default function RootLayout({
       className={`${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-paper text-ink">
-        <CartProvider>
-          <Nav />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </CartProvider>
+        <CatalogProvider>
+          <CartProvider>
+            <SiteChrome>{children}</SiteChrome>
+          </CartProvider>
+        </CatalogProvider>
       </body>
     </html>
   );

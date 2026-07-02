@@ -3,13 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
-import { getArtworkBySlug, isPurchasable } from "@/lib/mockData";
+import { isPurchasable } from "@/lib/artwork-rules";
+import { useCatalog } from "@/lib/catalog-context";
 import { formatPrice } from "@/lib/format";
 
 export default function CartPage() {
   const { lines, subtotal, removeItem, setQuantity, isHydrated } = useCart();
+  const { getArtworkBySlug, isLoaded } = useCatalog();
 
-  if (!isHydrated) {
+  if (!isHydrated || !isLoaded) {
     return <div className="mx-auto max-w-4xl px-5 py-16 sm:px-8" aria-hidden />;
   }
 

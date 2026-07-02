@@ -10,14 +10,21 @@ export default function Newsletter({
   variant?: "light" | "dark";
 }) {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "submitted">("idle");
+  const [status, setStatus] = useState<"idle" | "submitted" | "error">("idle");
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!email.trim()) return;
-    // Phase 1 prototype: no backend yet. Phase 2 wires this to a real
-    // email provider (e.g. Resend/Mailchimp) and stores subscribers in Postgres.
-    setStatus("submitted");
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setStatus(res.ok ? "submitted" : "error");
+    } catch {
+      setStatus("error");
+    }
   }
 
   const isDark = variant === "dark";
@@ -63,6 +70,11 @@ export default function Newsletter({
       >
         Notify me of new drops
       </button>
+      {status === "error" && (
+        <p className={`text-xs ${isDark ? "text-paper/70" : "text-clay"}`}>
+          Couldn&apos;t save that — please try again.
+        </p>
+      )}
     </form>
   );
 }

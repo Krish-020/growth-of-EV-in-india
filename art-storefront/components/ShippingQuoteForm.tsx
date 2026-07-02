@@ -2,15 +2,26 @@
 
 import { useState, type FormEvent } from "react";
 
-export default function ShippingQuoteForm({ title }: { title: string }) {
+export default function ShippingQuoteForm({ title, slug }: { title: string; slug: string }) {
   const [submitted, setSubmitted] = useState(false);
   const [destination, setDestination] = useState("");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Mock inquiry — Phase 2 emails the studio and creates an order record
-    // with status "awaiting shipping quote" instead of taking payment upfront.
-    setSubmitted(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/shipping-quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artworkSlug: slug, email, destination }),
+      });
+      if (!res.ok) throw new Error();
+      setSubmitted(true);
+    } catch {
+      setError("Couldn't send that request — please try again.");
+    }
   }
 
   if (submitted) {
@@ -51,10 +62,13 @@ export default function ShippingQuoteForm({ title }: { title: string }) {
         <input
           type="email"
           required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           className="focus-ring rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink outline-none"
         />
       </label>
+      {error && <p className="text-xs text-clay">{error}</p>}
       <button
         type="submit"
         className="focus-ring mt-1 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-clay-dark"

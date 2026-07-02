@@ -1,5 +1,5 @@
 import type { Artwork } from "@/lib/types";
-import { availabilityLabel } from "@/lib/mockData";
+import { availabilityLabel } from "@/lib/artwork-rules";
 
 export default function StatusBadge({ artwork }: { artwork: Artwork }) {
   const label = availabilityLabel(artwork);

@@ -23,7 +23,7 @@ export default function BuyBox({ artwork }: { artwork: Artwork }) {
             ? "This edition is fully sold."
             : "This original has sold and is no longer available."}
         </p>
-        <NotifyMeForm title={artwork.title} />
+        <NotifyMeForm title={artwork.title} slug={artwork.slug} />
       </div>
     );
   }
@@ -46,7 +46,7 @@ export default function BuyBox({ artwork }: { artwork: Artwork }) {
   }
 
   if (artwork.requiresShippingQuote) {
-    return <ShippingQuoteForm title={artwork.title} />;
+    return <ShippingQuoteForm title={artwork.title} slug={artwork.slug} />;
   }
 
   function handleAdd() {

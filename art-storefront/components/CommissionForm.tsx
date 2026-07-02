@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { getArtworkBySlug } from "@/lib/mockData";
+import { useCatalog } from "@/lib/catalog-context";
 
 const BUDGET_BANDS = [
   "Under ₹50,000",
@@ -14,28 +14,78 @@ const BUDGET_BANDS = [
 
 const WORK_TYPES = ["Painting", "Sculpture", "Either / open to suggestions"];
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Strip the "data:<mime>;base64," prefix — we store mime separately.
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function CommissionForm() {
   const searchParams = useSearchParams();
   const pieceSlug = searchParams.get("piece") ?? "";
+  const { getArtworkBySlug } = useCatalog();
   const referencePiece = pieceSlug ? getArtworkBySlug(pieceSlug) : undefined;
 
-  const [files, setFiles] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [referenceId, setReferenceId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Mock inquiry submission. Phase 2 stores this as a commission_requests
-    // row (status: "new") and emails the studio + a confirmation to the
-    // requester; reference uploads go to blob storage, not a real backend yet.
-    const id = `COM-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-    setReferenceId(id);
-    setSubmitted(true);
+    setError(null);
+    setSubmitting(true);
+
+    const form = new FormData(e.currentTarget);
+    try {
+      const attachments = await Promise.all(
+        files.map(async (file) => ({
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          dataBase64: await fileToBase64(file),
+        }))
+      );
+
+      const res = await fetch("/api/commissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: form.get("fullName"),
+          email: form.get("email"),
+          phone: form.get("phone") || undefined,
+          workType: form.get("workType"),
+          brief: form.get("brief"),
+          approxSize: form.get("approxSize") || undefined,
+          budgetRange: form.get("budgetRange"),
+          pieceSlug: pieceSlug || undefined,
+          attachments,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong sending your request.");
+        setSubmitting(false);
+        return;
+      }
+      setReferenceId(data.referenceId);
+      setSubmitted(true);
+    } catch {
+      setError("Couldn't reach the server. Please try again.");
+      setSubmitting(false);
+    }
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const names = Array.from(e.target.files ?? []).map((f) => f.name);
-    setFiles(names);
+    setFiles(Array.from(e.target.files ?? []));
   }
 
   if (submitted) {
@@ -67,15 +117,15 @@ export default function CommissionForm() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Full name" required>
-          <input required className={inputClass} />
+          <input name="fullName" required className={inputClass} />
         </Field>
         <Field label="Email" required>
-          <input type="email" required className={inputClass} />
+          <input name="email" type="email" required className={inputClass} />
         </Field>
       </div>
 
       <Field label="Phone (optional)">
-        <input type="tel" className={inputClass} />
+        <input name="phone" type="tel" className={inputClass} />
       </Field>
 
       <fieldset className="flex flex-col gap-2">
@@ -97,6 +147,7 @@ export default function CommissionForm() {
 
       <Field label="Tell us about the brief" required>
         <textarea
+          name="brief"
           required
           rows={5}
           placeholder="Space it's for, mood, colours, any constraints on size or timeline…"
@@ -105,11 +156,15 @@ export default function CommissionForm() {
       </Field>
 
       <Field label="Approximate size (optional)">
-        <input placeholder="e.g. roughly 90 x 120 cm" className={inputClass} />
+        <input
+          name="approxSize"
+          placeholder="e.g. roughly 90 x 120 cm"
+          className={inputClass}
+        />
       </Field>
 
       <Field label="Budget range" required>
-        <select required defaultValue="" className={inputClass}>
+        <select name="budgetRange" required defaultValue="" className={inputClass}>
           <option value="" disabled>
             Select a range
           </option>
@@ -131,18 +186,25 @@ export default function CommissionForm() {
         />
         {files.length > 0 && (
           <ul className="mt-1 text-xs text-ink-soft">
-            {files.map((name) => (
-              <li key={name}>{name}</li>
+            {files.map((file) => (
+              <li key={file.name}>{file.name}</li>
             ))}
           </ul>
         )}
       </Field>
 
+      {error && (
+        <p className="rounded-md border border-clay/40 bg-clay/10 px-4 py-3 text-sm text-clay-dark">
+          {error}
+        </p>
+      )}
+
       <button
         type="submit"
-        className="focus-ring mt-2 w-full rounded-full bg-ink px-6 py-3.5 text-sm font-medium text-paper transition-colors hover:bg-clay-dark sm:w-auto sm:px-10"
+        disabled={submitting}
+        className="focus-ring mt-2 w-full rounded-full bg-ink px-6 py-3.5 text-sm font-medium text-paper transition-colors hover:bg-clay-dark disabled:opacity-60 sm:w-auto sm:px-10"
       >
-        Send commission request
+        {submitting ? "Sending…" : "Send commission request"}
       </button>
     </form>
   );

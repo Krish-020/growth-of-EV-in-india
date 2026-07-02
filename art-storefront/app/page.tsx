@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import ArtCard from "@/components/ArtCard";
-import { getFeaturedArtworks } from "@/lib/mockData";
+import { getFeaturedArtworks } from "@/lib/db/artworks";
 import { siteConfig } from "@/lib/site-config";
 
-export default function HomePage() {
-  const featured = getFeaturedArtworks(4);
+export default async function HomePage() {
+  const featured = await getFeaturedArtworks(4);
 
   return (
     <>
